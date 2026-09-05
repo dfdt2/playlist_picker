@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<title>Playlist Picker</title>
+<style>
+:root {
+  --bg:#f6f6f4; --card:#fff; --text:#161616; --muted:#6f6f6a;
+  --border:#deded8; --chip:#efefeb; --selected:#1d1d1b; --selectedText:#fff;
+}
+* { box-sizing:border-box; }
+body {
+  margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  background:var(--bg); color:var(--text);
+}
+main { max-width:760px; margin:0 auto; padding:18px 14px 44px; }
+h1 { font-size:28px; margin:4px 0 4px; }
+.sub { color:var(--muted); font-size:13px; margin-bottom:18px; }
+.section {
+  background:var(--card); border:1px solid var(--border); border-radius:16px;
+  padding:14px; margin:0 0 12px;
+}
+.section h2 { font-size:15px; margin:0 0 10px; }
+.autogrid, .optional-grid {
+  display:grid; grid-template-columns:1fr 1fr; gap:10px;
+}
+label { display:block; font-size:12px; color:var(--muted); margin-bottom:5px; }
+select {
+  width:100%; appearance:none; border:1px solid var(--border); background:white;
+  border-radius:12px; padding:11px 12px; font-size:15px; color:var(--text);
+}
+.actions { display:flex; gap:8px; margin-top:10px; }
+button.small {
+  border:1px solid var(--border); background:white; border-radius:10px;
+  padding:8px 10px; font-size:13px;
+}
+.chips { display:flex; flex-wrap:wrap; gap:7px; }
+.chip {
+  border:1px solid var(--border); background:var(--chip); color:var(--text);
+  border-radius:999px; padding:8px 11px; font-size:14px; line-height:1;
+  cursor:pointer; user-select:none;
+}
+.chip.selected { background:var(--selected); color:var(--selectedText); border-color:var(--selected); }
+.chip .count { opacity:.6; font-size:12px; margin-left:4px; }
+.logic { color:var(--muted); font-size:12px; margin:0 0 10px; }
+.results-head {
+  display:flex; justify-content:space-between; align-items:end; gap:12px;
+  margin:20px 2px 10px;
+}
+.results-head h2 { margin:0; font-size:18px; }
+.sort-wrap { width:145px; }
+.sort-wrap select { padding:8px 10px; font-size:13px; }
+.cards {
+  display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px;
+}
+.card {
+  background:var(--card); border:1px solid var(--border); border-radius:16px;
+  overflow:hidden; text-decoration:none; color:inherit; display:block;
+}
+.cover {
+  width:100%; aspect-ratio:1/1; object-fit:cover; display:block; background:#e7e7e2;
+}
+.no-cover {
+  width:100%; aspect-ratio:1/1; display:flex; align-items:center; justify-content:center;
+  color:var(--muted); background:#e7e7e2; font-size:12px;
+}
+.card-body { padding:10px; }
+.name { font-weight:700; font-size:16px; margin-bottom:7px; }
+.tags { display:flex; flex-wrap:wrap; gap:5px; }
+.tag {
+  background:var(--chip); border-radius:999px; padding:5px 7px;
+  font-size:11px; color:#454541;
+}
+.spotify {
+  display:inline-block; margin-top:10px; font-size:13px; font-weight:650;
+}
+.spotify.missing { color:var(--muted); font-weight:500; }
+.empty {
+  background:var(--card); border:1px solid var(--border); border-radius:16px;
+  padding:24px; color:var(--muted); text-align:center; grid-column:1/-1;
+}
+@media (min-width:650px) {
+  .cards { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .optional-grid { grid-template-columns:repeat(3,1fr); }
+}
+
+details.time-section {
+  padding:0;
+}
+details.time-section summary {
+  list-style:none;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:14px;
+  cursor:pointer;
+  font-size:15px;
+  font-weight:700;
+}
+details.time-section summary::-webkit-details-marker { display:none; }
+details.time-section summary::after {
+  content:"›";
+  font-size:22px;
+  line-height:1;
+  transform:rotate(90deg);
+  transition:transform .18s ease;
+  color:var(--muted);
+}
+details.time-section[open] summary::after {
+  transform:rotate(-90deg);
+}
+.time-summary {
+  margin-left:auto;
+  font-weight:500;
+  color:var(--muted);
+  font-size:13px;
+}
+.time-content {
+  padding:0 14px 14px;
+}
+
+</style>
+</head>
+<body>
+<main>
+  <h1>playlist picker</h1>
+  
+  
+  <details class="section time-section">
+    <summary>
+      <span>Time</span>
+      <span class="time-summary" id="timeSummary"></span>
+    </summary>
+    <div class="time-content">
+      <div class="autogrid">
+        <div>
+          <label for="season">Season</label>
+          <select id="season">
+            <option value="spring">Spring</option>
+            <option value="summer">Summer</option>
+            <option value="fall">Fall</option>
+            <option value="winter">Winter</option>
+          </select>
+        </div>
+        <div>
+          <label for="timeofday">Time of day</label>
+          <select id="timeofday">
+            <option value="early">Early</option>
+            <option value="noon">Noon</option>
+            <option value="afternoon">Afternoon</option>
+            <option value="evening">Evening</option>
+            <option value="night">Night</option>
+          </select>
+        </div>
+      </div>
+      <div class="actions"><button class="small" id="useNow">Use current date & time</button></div>
+    </div>
+  </details>
+
+  <section class="section">
+    <h2>Setting</h2>
+    <div class="optional-grid" id="settingFilters"></div>
+  </section>
+
+  <section class="section">
+    <h2>Group dynamics</h2>
+    <div class="optional-grid" id="groupFilters"></div>
+  </section>
+
+
+  <section class="section">
+    <h2>Genres</h2>
+    <div class="logic">Select multiple if you want. A playlist must contain <b>all</b> selected genres.</div>
+    <div class="chips" id="genreChips"></div>
+  </section>
+
+  <section class="section">
+    <h2>Moods</h2>
+    <div class="logic">Only moods available after the filters above are shown. Multiple moods use <b>OR</b>.</div>
+    <div class="chips" id="moodChips"></div>
+  </section>
+
+  <div class="results-head">
+    <h2><span id="resultCount">0</span> playlists</h2>
+    <div class="sort-wrap">
+      <label for="sort">Sort</label>
+      <select id="sort">
+        <option value="best">Best match</option>
+        <option value="az">Name A–Z</option>
+      </select>
+    </div>
+  </div>
+  <div class="cards" id="results"></div>
+</main>
+
+<script>
+const playlists = [{"name": "weird", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/z6nGrUK4JHTMN4Zm09k60A/rNcTmG9QTy2HeqrQXgUCrb7zsVTkBHlR6z-eptZE18gAp9UUaqXvsOhCdusaXLc_35qE7k-zz-RrM-IUTfT2VObjzGpIeCBfYDWRlfIevljoilU2XCHT8Rce3TuhJk66P5SfWDwEbHIsKcCQMQFghA/CiZ6BrwpZZwhUiCea-5cl6OoL9Rp3uMLU1DyZIUbxV8", "spotify": "https://open.spotify.com/playlist/7dw6EaNzd8yHnvwLpqF2xh?si=35d8719c30024054", "mood": ["confident", "stylish"], "genres": ["pop", "electronic"], "time of day": ["noon", "afternoon"], "season": ["spring", "summer", "fall", "winter"], "location": ["inside"], "audience": ["mixed"], "social safety": ["medium", "low"], "age range": ["young", "my age"], "attention demand": ["medium"]}, {"name": "lab", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/8daYDIkTgNK1l1b4YmEGEQ/e4mt3mn0XjwZK7r6GhkhQP4RgGv-Joepc87hFio08n6X5hPpARfghMYGgOekZDDDkHeSlrFDPDFBHSx3KabVkAjVnvWaQWsLi1KfEJ9b2hpipEjZX3Z-9qzbvfrlNgnQZl3H82WUZFh1uFSEsETblw/ntsUzlvxR-JeY08SPLabuzHr56xD8KsVKZ70gsNJBeQ", "spotify": "https://open.spotify.com/playlist/3cM0tGW4dYVpNPEqp27z80?si=252454dc04e24b49", "mood": ["cinematic", "introspective"], "genres": ["pop", "electronic"], "time of day": ["afternoon", "evening", "noon"], "season": ["spring", "summer", "fall", "winter"], "location": ["inside"], "audience": ["mixed"], "social safety": ["low"], "age range": ["my age"], "attention demand": ["high"]}, {"name": "early", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/_roO3vwZoZLbdaeY6Y2QOA/L5I5FLBjJ7EtmlicsuLv2POXQKfXDkcq2o0xBH4w8NHgAGZeJQJE3Tyop5TUX1U63pPW_2kEIQhjJC9N4KysxK-EQAyea0knUaX8-OqM4aRFnce9DXLbhsy4z64bPR8YV8qLkeRoDnKREtvBtZQ-oQ/_yghr6ITbgM_uKdY-zapqdgRbjwbPTLb5tbDSCpiXco", "spotify": "https://open.spotify.com/playlist/40WEcvLJTEHRllMZEnzAYS?si=4696044aae1c48c4", "mood": ["nostalgic", "uplifting"], "genres": ["pop"], "time of day": ["early"], "season": ["spring", "summer", "fall", "winter"], "location": ["inside", "outside"], "audience": ["mixed", "feminine"], "social safety": ["medium", "low", "high"], "age range": ["my age", "young"], "attention demand": ["medium", "low"]}, {"name": "clouds", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/h0fhSsfmtq0lMKJOjI0sBQ/PbIHCMQ0hZoZSUj1SiT35K6EGFOTfhIp-VfPQTaz_OJuN_p3Q9MEzniNNNBWG4MlwAgFMtYL-ofDHnRla-O3jn18pqtwadfBob8dl1HZvyGigTSR8-egzcsBwWAytj4CB8yqPG3Lq4IYHRwOeKS4ow/YJo5uZmYwZq2dGU7HzFGTzqkvK695_ed2uChuLaD4ME", "spotify": "https://open.spotify.com/playlist/5Uo6PNENZwjATxhE9ve1CX?si=f382b234dc07424e", "mood": ["dreamy", "atmospheric"], "genres": ["indie", "electronic"], "time of day": ["early", "noon", "evening"], "season": ["spring", "summer", "fall", "winter"], "location": ["inside", "outside"], "audience": ["feminine"], "social safety": ["medium", "low"], "age range": ["my age", "young"], "attention demand": ["low"]}, {"name": "chill", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/0DncOOxIwR9Urn3-XNY0Hw/dQ5znUyLaIahsu7r4llIsQnewcDtOSA0pt0Mi5283ep77spjh_6EelKZi4mlhuGu0Fxp3LOM38ESPsQIovqt59xHdd12kk2H1Q8vY--n9cQbAEXZKPpPvW6s4SEbXzIjG7AaJ4LXwMkTR4JaN_cdQA/510IpEK7pFCj_BIK3860yafrlIuNXy0mwJdIFX486lk", "spotify": "https://open.spotify.com/playlist/5lRlaGSLCwVA9x0kPzuMEr?si=eb9db0285bd84aad", "mood": ["nostalgic", "relaxed"], "genres": ["pop", "rock"], "time of day": ["afternoon", "evening", "noon"], "season": ["spring", "summer", "fall", "winter"], "location": ["inside", "outside"], "audience": ["mixed"], "social safety": ["high", "medium", "low"], "age range": ["my age"], "attention demand": ["medium"]}, {"name": "wake up", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/cyhtf-tIxk-FIzsKgYV_6g/WqyENg6PcIDVdcdE0934MDKjEfGnfeXvE8Sr2uYk3T5wsmEcwl4LkSjW_nSn8FTl0UBBHhv_8FAqTrfyVxxnguQJuTeX0n_b6eAnr4fEaoW59T0kKklX4YEgwpslqn0ohpkL7eVXmDxOGKE_f0bmoQ/v3RrVUxLEF7YDkYBGJOp7yTNPKJZBA0DyxTBT9UQazE", "spotify": "https://open.spotify.com/playlist/0rccmepOmZWNMBcfrHILcu?si=9ff2ef1c65464cf4", "mood": ["fresh", "upbeat"], "genres": ["pop", "indie", "electronic"], "time of day": ["early"], "season": ["spring", "summer", "fall", "winter"], "location": ["inside"], "audience": ["feminine"], "social safety": ["high", "medium", "low"], "age range": ["my age", "older"], "attention demand": ["medium"]}, {"name": "butterfly", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/bBa4kCHOQzna8tahA7cP3g/tdyyFfcAfLXoQuCgSJaq76BlBgV1A3D1bVyhYB6Tlunjk7VLT-RAnzy_jTZf4IQUsqBGpI_vbPz6ew1dVh5axXu3OXx9-YfTTCE_tcRyfBubP6-87m7H4DiU0qlgxqqAvE5ErhlW6RK98mWpxnGa_w/2pieMnOJLjlRwYCiz0jAT0isjiTWsruQxFe_52CYYRk", "spotify": "https://open.spotify.com/playlist/4KOwdpRFUKw30jFiAni2qO?si=5c0b4f91175d4471", "mood": ["feminine", "whimsical"], "genres": ["pop", "indie"], "time of day": ["early", "noon"], "season": ["spring", "summer", "fall", "winter"], "location": ["inside", "outside"], "audience": ["feminine"], "social safety": ["high", "medium", "low"], "age range": ["my age", "young", "older"], "attention demand": ["medium"]}, {"name": "excited", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/n_oD5I8seeuZO_x60ggyeA/OLA8rwzoNiKN6OQZrLRydQTqpATY-HkszuQ_v9AtLiH7mWi-C90_Hfy0HfA9YVfGqyOEvu4OWjJNyq-1dY8uSyGnlg7JANmXZuq0lIzfqTfcnvh_TfXk6mUDqSkd96q6Awq4kI72QgwEB7ltjniJEw/6xOACCrw5Pm9Aq1qMHreqbaThisz78Vii1ERgJtisB8", "spotify": "https://open.spotify.com/playlist/71rdNyECFF10wO59GX1swG?si=a2329d5da7804900", "mood": ["energetic", "chaotic"], "genres": ["pop", "hip hop", "electronic"], "time of day": ["noon", "afternoon"], "season": ["spring", "summer", "fall", "winter"], "location": ["inside"], "audience": ["feminine"], "social safety": ["medium", "low"], "age range": ["my age", "young"], "attention demand": ["high"]}, {"name": "soothe", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/ku6Tb3XFW7ailwFqvCUNwA/2gFlx5_5QbpS2p-TmqntoGn8lPFKpEtbsIbjQFh8WCyTRaoHryJOoAF1WsPC46j3B9uMd4VYkuyEhvdGLPcoSWHt3-5L93vVr5AeDirOSiAOEG7SXvfGQCgaL3Ys-W9JUtbt-Cxv-Fyk43x-7ZkQGQ/4w3m8wtml8FgbP9TVBIWLyevonOVUcDbAXl9MCytqT0", "spotify": "https://open.spotify.com/playlist/5DpUj38ioDNZkj5L4RQHAT?si=b908c1d0f0e0425a", "mood": ["mellow", "soothing"], "genres": ["indie", "electronic"], "time of day": ["early", "noon", "afternoon", "evening"], "season": ["spring", "summer", "fall", "winter"], "location": ["inside", "outside"], "audience": ["feminine"], "social safety": ["high", "medium", "low"], "age range": ["young", "my age"], "attention demand": ["medium"]}, {"name": "feminine", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/ndKaZ9dND8KSiwm7Jpb2HA/qlHbQadGkaXVSz0JbqSvh_Dh9FkgBg3k3A1BgU8IiOzVXVfLAE0QKL-RzYwGwyj__K4U3FWuagORUxoI-9lyJU-CiiDbXI2VWHBdZIT7fRsoGZUQTqsFeOpypXnYT9OKXNwpL-v-PrLOoBKCx8SUHA/mrBAueLN9gp9lI_QeX6wzviz4-xtYZsIdzgAIVuoagE", "spotify": "https://open.spotify.com/playlist/0O3LQLj9z2I7Elw3bZJ306?si=e59df56b7dea4ed0", "mood": ["emotional", "feminine"], "genres": ["pop", "indie"], "time of day": ["noon", "afternoon"], "season": ["spring", "summer", "fall", "winter"], "location": ["inside"], "audience": ["feminine"], "social safety": ["high", "medium", "low"], "age range": ["my age", "young"], "attention demand": ["medium"]}, {"name": "sunset", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/kWEvjcmJh-BQUxlGiLLA-Q/5QY83FnGQd-FyES3VbIKU0EqyE8ChEXkeKA2kg8Fzcz9EaEx4Z5QaEKf-4Z0DbG2aG8DmXF17u2R9fkBN_7vXmCgVaRuyhVWDH_1QozGykXeW8FSDHIq_8KuYnLyuwfnkyhGzAyjWlhwUkgpYvWVAg/MM4DWTVv5Dn2SDbJaSCWKiyA3Fgo_KibckgR_usFd_8", "spotify": "", "mood": ["stylish", "carefree"], "genres": ["pop", "electronic", "hip hop"], "time of day": ["noon", "afternoon", "evening"], "season": ["spring", "summer"], "location": ["outside", "inside"], "audience": ["mixed"], "social safety": ["medium", "high", "low"], "age range": ["young", "my age"], "attention demand": ["medium"]}, {"name": "tangerine", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/JjOFCirWro5OsL7XS0_F7g/y7dnGrM8Tl9-ONcQganDGHNMB2wtJINgI-SZ7GgKJjU02P1nWZWKbWSD2z_hwbkg9mUJJKiEO7EULWSmb1tAZGHDoNIKPObM00MDCiUi5W3g0j5ywf3OL4yi4sdX31vX71oOkhfxME66yuNlKUprzg/dKATY8qGGbt0j3ciwyT-8ZvmojokKk7mjDjyuxIm1zI", "spotify": "", "mood": ["playful", "stylish"], "genres": ["jazz", "electronic", "indie", "pop"], "time of day": ["afternoon", "evening", "noon"], "season": ["spring", "summer", "fall", "winter"], "location": ["inside", "outside"], "audience": ["feminine", "mixed"], "social safety": ["medium", "low"], "age range": ["my age", "young"], "attention demand": ["medium"]}, {"name": "serene", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/mwW3C2uLe_W1GOSLwscnZg/G1WS2S1iyvQEk-D0GbNVW5VYV_MG6RxT0loVbVA217Bg5xyRIe6VBMjrKBzXn6TnopdQH0ajQZaRwsZm2jUaeQFZy3ZlMJeKUy8h6bYHpRJIgRlqd-OZX2MdthxsNlTvqXiXERZNT__fy7rABW-H9g/P-9sPvqKWC_rhDitlrtN0WrBSeAtJc9FDF65dyLSN64", "spotify": "", "mood": ["dreamy", "introspective"], "genres": ["pop", "indie", "classical"], "time of day": ["evening", "night"], "season": ["spring", "summer", "fall", "winter"], "location": ["inside"], "audience": ["feminine"], "social safety": ["medium", "low"], "age range": ["my age"], "attention demand": ["medium"]}, {"name": "heartbreak", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/qN4YNcBos_2KyM2Z7k5UEw/l6HqGNLR2xCuzYavTJO_zeShtnRukB25RxxEemHN7cAKPaMFWoB2GN_K2lOBsTTSV1EII7-IOHNe3fQRQrqywDZplxrgA2mH4FtmUfcUrCXsDd8WQE4H5GBz3-PVRzHasm-fc4lA4qsMGaE5rPwlIw/tSYtt8Y6uTsuD8cJFdLEYVufkzuUOLRpkbBrtJkAr_s", "spotify": "", "mood": ["sad", "vulnerable"], "genres": ["pop", "indie"], "time of day": ["afternoon", "evening", "night"], "season": ["spring", "summer", "fall", "winter"], "location": ["inside"], "audience": ["feminine"], "social safety": ["low"], "age range": ["my age"], "attention demand": ["high", "medium"]}, {"name": "red wine", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/bh1R--f_h-qE1Vtnuqdt_g/WVR2ws14pWrUg8oaApvoSZI_vGQCLUlJHK4jLOSDpxLWZdOsCH--_QliT7FjJ8vw0s8c5JszK58P-PRLxhPuDBOyVxK5KG1rxHAZV4ou7rDcDo-2DAeCgxFi8d2kXDt_nP91ViL_7gvfCMcnTuFGUQ/-vxpGBYDXenFYWexAhQcm3WAcYu6hoTl_0q0_W-Sg54", "spotify": "", "mood": ["sophisticated", "sultry"], "genres": ["jazz", "pop", "indie"], "time of day": ["evening", "night"], "season": ["spring", "summer", "fall", "winter"], "location": ["inside"], "audience": ["feminine"], "social safety": ["medium", "low"], "age range": ["my age", "older"], "attention demand": ["medium"]}, {"name": "valentine", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/D9bby6Ou0ukJWi_mU5v9OQ/8lGHBss6taoLc-Gc_5PrhYdNfkUkHtCnbvGrGC8gk0AQiKQ-yftMRwhj8HhddH-k89yvd8qTGEeYdCKuBgGcKJ6V-Ic8eJkiBmiTrmmfUQYlXJcw-qC2Pa9lsTU_E7kXQRavOwwQOPdnVVklMgCabg/9cm0z2D7kycqKVCUR8xLz0WT96ZMmAGVYz1jREZtR80", "spotify": "", "mood": ["romantic", "flirty"], "genres": ["pop", "jazz", "hip hop"], "time of day": ["evening", "night"], "season": ["spring", "summer", "fall", "winter"], "location": ["inside"], "audience": ["mixed"], "social safety": ["medium", "low"], "age range": ["my age"], "attention demand": ["medium"]}, {"name": "red", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/XdBYowKWjfZwCzOSPRLLyA/tK2MAgSQlxngHvkWx_zau8SROdDvBBlDoqdX4iAPcx__gCU4tgi2DvwfQ_ZVvpXm_JW3H9pStRDDo0w15298DP9UExC_4yzaK-fSKlmBbV8AY9UDSgmRByEB9Gvq0KF874h27l0BvuACSIXf11-LKw/ZPsjV0__dsUOthwpqE1ZTWyssJ-SzazUp9pRXt2gz9c", "spotify": "", "mood": ["confident", "playful"], "genres": ["pop", "hip hop"], "time of day": ["noon", "afternoon"], "season": ["spring", "summer", "fall", "winter"], "location": ["inside"], "audience": ["feminine"], "social safety": ["low"], "age range": ["young", "my age"], "attention demand": ["medium", "high"]}, {"name": "pregame", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/TZkX_6cu4hVOlwF50jh0TQ/Yy-PJAOTN1AZvTfN1Wnh73EagCwp8oZCFicA12s8yMwoL02HzdonwP47FRM8fIugEBYLba_i36ZbtjY-JfaAgvamkTpoIMjCwhah9uagQsAS9OY_-qtcmw58Mx3KAdFCCVUuVzMDj9u3PaY4-05JTQ/UbNPJYbRhELjt7QXhD0gS9hd5O79PVbSQlg8TLLPaFM", "spotify": "", "mood": ["energetic", "playful"], "genres": ["pop", "hip hop"], "time of day": ["afternoon", "evening", "night"], "season": ["spring", "summer", "fall", "winter"], "location": ["inside"], "audience": ["mixed"], "social safety": ["medium", "low"], "age range": ["my age", "young"], "attention demand": ["high"]}, {"name": "rock", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/ecCyQQUvfSlXkh79R2uFPA/BrIEkGbR4XOYGshCEV-QG5VAhGD1CkbF1BwIGh3zx-gYncuS8uo28a0boN-7OS3QgRaiJoYQpSVnoJF6cIS9-QaV0iTnpHGFv0NaJz1B_PbuKlba20U1EuyOLfF9M8gBSPgR0cOV5atDGittZVv2WA/7AJm1ejxVWyYBBPQcY7o_unop4epSVExgUxpA-qTYhs", "spotify": "", "mood": ["energetic", "loud"], "genres": ["rock"], "time of day": ["noon", "afternoon", "evening", "night"], "season": ["spring", "summer", "fall", "winter"], "location": ["inside"], "audience": ["masculine"], "social safety": ["medium", "low"], "age range": ["my age", "older"], "attention demand": ["medium", "high"]}, {"name": "warmth", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/OL2DZUlYn3TLiMvUOywmgw/w6ILZG1HUeFan3ZM_DUjMyiE3dpPeZGR9RVrRSZvQt5mcKeLG9zvdZZfq4Cm1Xv2-B9AI1o7NXi92yPEcyeb_cgKTpIKejDNfYe9d3ldWoebXKsufgHKgLkCKHzpG2ossJoPPM2vhwd4Xo8mp6PNTw/fZnl7txCKL2yw8m4O56b8VjuGn05gaUVXbdbkcxoNeY", "spotify": "", "mood": ["warm", "comforting"], "genres": ["indie", "folk"], "time of day": ["early", "noon", "afternoon", "evening", "night"], "season": ["fall", "winter"], "location": ["inside", "outside"], "audience": ["mixed"], "social safety": ["medium", "low"], "age range": ["my age", "older"], "attention demand": ["medium"]}, {"name": "autumn", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/PRe9BkGjobyDGZKjkFqhhg/NNR-5lZA6VP9g6wBxaroUECCM2lRU3CEDU4hf0SnDEh10Kn3BacKixCzYQHQeHzunagwrf3CgfTAOc-oPwVcFnYYF_jBiEeBQK1ufSuEcgwOHDcOxyYRWlZfA7Gpv5kUCWq665zUQtkLNQ83iZxA8w/aiJZB5_pvvYTfY0Ytk_lCdVnKnSaXQM4zFuX8DodHcU", "spotify": "", "mood": ["earthy", "wistful"], "genres": ["rock", "folk", "indie"], "time of day": ["noon", "afternoon", "evening"], "season": ["fall"], "location": ["inside", "outside"], "audience": ["mixed"], "social safety": ["medium", "low", "high"], "age range": ["my age", "older"], "attention demand": ["medium"]}, {"name": "afternoon", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/K--P0grJihIymnZVQ9GPbw/c8Tdl-8rME9Ap3jMqTxoMteqvMFCXIS9dgXb2PdWVPsgZ8EkmUtVrNEko4lOm0Ma6maXr-TEH8jrDTdcNpsY5AWlPUDCch8dbtw-2MJUAsQYBX8SgsbaEdoZsy8qwVcasYn-_xmYF5g6Sr--xQ0oQw/2zw3PCSSM6xo48ySYHeqaepMiz6q2WhhkZ_NIIS0mbU", "spotify": "", "mood": ["sunny", "upbeat"], "genres": ["pop", "electronic", "rock"], "time of day": ["noon", "afternoon"], "season": ["spring", "summer", "fall", "winter"], "location": ["outside"], "audience": ["mixed"], "social safety": ["medium", "low"], "age range": ["young", "my age"], "attention demand": ["medium"]}, {"name": "sunlight", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/LabyT7J2Msiavh7iUUbRZA/z5koxAbcreom7fqul-sTmxaVr7Qh0hQS_ev4ABA6CEeoTE7MNfyYxoScbTUhhUbxddRB11XDMi3sPeGFO3LkcFxXW9SS1bjc1yji8iRVmzWBFNz0HFIqSDzk-FX8UfB_s6DldTm7VxhmfjSSqQ_KFg/h8yee9oudRaR0R5VTkVzSPBOlmQgVrJu3W4Ku2XeqMI", "spotify": "", "mood": ["radiant", "vibrant"], "genres": ["electronic", "pop"], "time of day": ["noon", "afternoon", "evening"], "season": ["spring", "summer", "fall", "winter"], "location": ["inside", "outside"], "audience": ["mixed"], "social safety": ["medium", "low"], "age range": ["young", "my age"], "attention demand": ["medium"]}, {"name": "getting ready", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/p8L90pWAUiOHbxqzRrVvRw/vztKnQqVe1DJ16ZyXB9LmNI-BhYsD3wkIa1HA9Q8XX4wz3kty2q70roWG62gFRy_lxQ0jjNc7MfGHKeQBS5Vr-syHRYB2tJkvILQ0L9Mr_vhPTNu07PoaI7uY-R76U9_OBKfzh5h5_NG4gtc-VmOkg/GGt_Z4rWeScprZjVl4u_nAbJec7H-u0HMaNvP5cUTD0", "spotify": "", "mood": ["confident", "energetic"], "genres": ["pop", "hip hop"], "time of day": ["evening", "night"], "season": ["spring", "summer", "fall", "winter"], "location": ["inside"], "audience": ["mixed", "feminine"], "social safety": ["medium", "low"], "age range": ["my age", "young"], "attention demand": ["high"]}, {"name": "orange", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/o0vCeARluuUXCLooOEnl_Q/EOJBH3SbdEoA7VaOMPeKUcV4-XuAktjgyhJk8JkjS2QdRg8gzjELwMIvM4KuMo3rWtvUqazsE0PCU6CXvwGjIVMBJ94gXLigvCt6gos9lXWOpp48VoLUD2OsB9JLtbHYxOmWkGeCmrDfXzRbDvJqRw/HAC_cR_lNhrLjlyHnGF-sMtLHbMSfjIXb4r-8jd-Ivs", "spotify": "", "mood": ["vibrant", "carefree"], "genres": ["electronic", "pop"], "time of day": ["early", "noon", "afternoon", "evening"], "season": ["spring", "summer", "fall", "winter"], "location": ["inside", "outside"], "audience": ["feminine", "mixed"], "social safety": ["high", "medium", "low"], "age range": ["my age", "young"], "attention demand": ["medium", "low"]}, {"name": "energy", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/-kLhe_Cgy8dmQy7RWCLWfA/ohFTftNjL2IGmJD0D06VQZMY-F2eTr5BFfjBBodxl9TTpBFoXCy9FS_WbK7fatCE0vA4neu7NKUQV95jVQV4ilWwTCITokdvBbpCtk2yhpHAAIUe9JJFRe2so48YVj_8kdFYYa7q38oXBCUhGMpvHw/iCQ-x4rnROAoGYsEq__nPeU83gwwrkRgGWncZk7iJ2k", "spotify": "", "mood": ["energetic", "rebellious"], "genres": ["pop", "rock", "hip hop"], "time of day": ["noon", "afternoon", "evening", "night"], "season": ["spring", "summer", "fall", "winter"], "location": ["inside"], "audience": ["mixed", "feminine"], "social safety": ["medium", "low"], "age range": ["my age", "young"], "attention demand": ["high"]}, {"name": "spider leg", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/i3yXgjKfoZmiKlNGa-WuJQ/EAsHZmb2aXHrYGSJo6fVk8F3GZl7ucEzn5pB2T-gkZ16dBdL-_yhIZwcbkPWnfidkzk4pZZWnCvWIJfxyT5hcoGC1rJbCHcbpZhpOebuuusPoXpKOVba4IaZ2MiRbEfgoMAm_Ft_9XvUfk037FyUvw/quAIcXUBP__y-ca2CfXn9viWH0gEUwukoCjJ0wKgeqc", "spotify": "", "mood": ["edgy", "chill"], "genres": ["rock", "pop", "hip hop"], "time of day": ["afternoon", "evening", "night"], "season": ["spring", "summer", "fall", "winter"], "location": ["inside"], "audience": ["mixed"], "social safety": ["medium", "low"], "age range": ["my age", "young"], "attention demand": ["medium", "high"]}, {"name": "beer", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/x2_GOqPAzfu05BmgYnC0RA/F8s4XXyDOCS50qCKRxm2EkN5ZWSiD-biio7OiLD0ishHQa_fCHDsH88dV5T07AJ3-u-TMpcEwIVPeGqKFhQT6Wvst1Dl_7luihskmbKvIT4BoF1XTWYzcEzlAg8hs34QeAUEAWWh7XyA4cJ4fv3Okw/xXLlMdQfVbMmxz9ndCBDoNONQG4OpJnZK8McnUzOj9Y", "spotify": "", "mood": ["nostalgic", "social"], "genres": ["rock", "pop"], "time of day": ["noon", "afternoon", "evening"], "season": ["spring", "summer", "fall", "winter"], "location": ["inside", "outside"], "audience": ["mixed", "masculine"], "social safety": ["high", "medium", "low"], "age range": ["my age", "older"], "attention demand": ["medium"]}, {"name": "rain", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/MwNadgt2xazV7VEdf2TTrw/QfmrdGzYsS4QDxpKYLOjBMGuTC6hd-9ZLqrBYRutFn8qhAtG3Ev8HqpBWohfpY8ESrT4MDug4y_2-VUkMxP17WI3yBX8hYEMfsZt7TDOfEh9qaOLwhBALoR-0VBiLLTrhIZwQvPuGL_ghU6wBKNhDQ/2jLPzBWe4B0AebSOFqL2kYwgVGQcJTNbz03WCcGlzSs", "spotify": "", "mood": ["atmospheric", "melancholic"], "genres": ["rock", "hip hop", "folk"], "time of day": ["noon", "afternoon", "evening", "night"], "season": ["spring", "summer", "fall", "winter"], "location": ["inside"], "audience": ["mixed"], "social safety": ["medium", "low"], "age range": ["my age"], "attention demand": ["medium"]}, {"name": "girls night", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/kcibBxsZ7xTpfvCF5_4DMQ/jG6Zjgz_O5cAkWkVNH2AGUakZYwPT14yxyrEUDFEW-BIh9YJMVIo1QHRPBr9tAdRXSyLmxGcHc-I3D0NvMwnOw4vMuApQk-R48axfBA8aooqoAFERhk-n_Vtp7cNkwbraUMgqzn9RcPf_sqieFPeCQ/UGxnZlHGDs0wJquY8PMQWW8wuaJG4dL-FJQ1iZ1IJoE", "spotify": "", "mood": ["playful", "fun"], "genres": ["pop", "electronic", "hip hop"], "time of day": ["noon", "afternoon", "evening", "night"], "season": ["spring", "summer", "fall", "winter"], "location": ["inside"], "audience": ["feminine"], "social safety": ["medium", "low"], "age range": ["young", "my age"], "attention demand": ["high"]}, {"name": "shelter", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/hRPXta0yAGMxiNV2RPbjyg/WCCh9JkW76Iz6jwzHx5OAQCU2DTvtCanEKtxAaKOMcy9yueO2arrnQj4U9t6FSK3z_ZQfrcQWYrt_JJla3XnIdH8oY06UqYjclrbUoVapuj6R-ovCxavngWCx-og4mgOcWptyLFKZM1SFSYGkQ5EpA/k0UNQa9B3MiHIp_aEt_qUzUFMIj03pxiNLrrp7ljd_c", "spotify": "", "mood": ["comforting", "peaceful"], "genres": ["indie"], "time of day": ["early", "noon", "afternoon", "evening", "night"], "season": ["spring", "summer", "fall", "winter"], "location": ["inside", "outside"], "audience": ["mixed"], "social safety": ["medium", "low"], "age range": ["my age", "older"], "attention demand": ["low"]}, {"name": "sonoma", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/mqmGIJvvti2QqqJB_rFB_A/gLq1rVUCuHtNg0072iHhqFY3m9-Nqy0h4oLSk39xo6R9SST2MkuU80NDQEJK66OWmqVVNC4UYkOCrzxuyNWviBB1HmclMR1H35eLgdowj5I8WeA1wv5jc59Sx236HHAqEMHo0aXaP3oVKLiUwPUWYA/mE_THz-SjjRA8W5_k9EX8jhFXdfNJauy_IAzYG_ozgM", "spotify": "", "mood": ["carefree", "rustic"], "genres": ["rock", "hip hop"], "time of day": ["noon", "afternoon", "evening"], "season": ["summer", "fall", "winter"], "location": ["outside"], "audience": ["mixed"], "social safety": ["high", "medium", "low"], "age range": ["my age", "young", "older"], "attention demand": ["medium"]}, {"name": "christmas", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/CTXia4GGKsVpDK74RZm6ng/bpKCiYQO8MiMZCX2pfyAOANtySebqtFvvMU8PUdtHUO7su2gtCmX-Om_Es3tC6c5Toc5KrEvXJSYFqFnmxg7GJHGlCc8QWX66y-13E2Om4iZQVJwujG_VhdvBLIPLHKtl65R71a9XpoPQAaSONbZkw/POTAh7TJ1deLqqvxV3t16wSKG9aClFrk8TiLIB5oEAg", "spotify": "", "mood": ["cozy", "festive"], "genres": ["jazz", "rock"], "time of day": ["early", "noon", "afternoon", "evening", "night"], "season": ["winter"], "location": ["inside", "outside"], "audience": ["mixed"], "social safety": ["high", "medium", "low"], "age range": ["my age", "older", "young"], "attention demand": ["medium", "low"]}, {"name": "yellow", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/5cRFPyKJp8Wr904j992UwQ/-5d__lV1-qSZFC87-Yv7IRYkFeXI_fk5qfvzBZcDiHrh3yi_zHblMNYl3RVp7e6qN5xdigwKfdpcyJ7eUVkIPaAXNt4qH5zFONlrKEIsH_MZWTwX4QkQFiTeA2pLNQwfR7loPsNNP5je8J9H_Ih0aA/_eyS8MWISSlXCMrdGNwykVBxfKkfpOEhOb7EzWQ7Kb8", "spotify": "", "mood": ["warm", "soulful"], "genres": ["jazz", "hip hop"], "time of day": ["noon", "afternoon", "evening", "night"], "season": ["spring", "summer", "fall", "winter"], "location": ["inside"], "audience": ["mixed"], "social safety": ["high", "medium", "low"], "age range": ["my age", "young", "older"], "attention demand": ["medium"]}, {"name": "cafe", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/bfV0b0Qq0tVFS5kLh2E1VA/IVrviR-Gfb7ZAKlOJ_1DXxF-GtB77zmel0geIHKlgujtZGgQLdGjegdv2CTlQ9JU62pv5U43xZd5ipC9B6r8X6Tc4sNbAi1YS41Z-fUPzzIJOrcvLG9nPMY3BCjW8ITxTFdgy1UXPykUY-LRiDXPZA/pZ9U4i8W8aC-9mg_6c7U65pFN1FgYDTyXzZdsFaYcAc", "spotify": "", "mood": ["mellow", "sophisticated"], "genres": ["jazz", "rock"], "time of day": ["early", "noon"], "season": ["spring", "summer", "fall", "winter"], "location": ["inside"], "audience": ["mixed"], "social safety": ["high", "medium", "low"], "age range": ["my age", "young", "older"], "attention demand": ["medium"]}, {"name": "crunchy", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/RHjEYt41kqUF0gmXtcnPPg/Xzm_b0NvfvuM4I8UJesUFrsFYZ41C_gIKgo4jIIsdkJP0u8ci_-8G6bqKLaRSMpRa5qAwOtUZ7UErtgFYNSpRJqJHa8WYDAaOtCmGVO35JB_55Zz9oMZMV3h-dgmzrkLX3H0-1O6XLJdJBn-JS96Cg/M8HCITKEp7mf7aEQ014LxXzKXINmreEdPdJkrllhq3g", "spotify": "", "mood": ["cozy", "adventurous"], "genres": ["rock", "indie", "electronic", "folk"], "time of day": ["early", "noon", "afternoon", "evening"], "season": ["fall"], "location": ["outside"], "audience": ["mixed"], "social safety": ["high", "medium", "low"], "age range": ["my age", "older"], "attention demand": ["medium"]}, {"name": "golden", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/Iljc9DkOn7X9E_O1c_BDpw/ae-vUhHG3ZLRxhUj-TSTUhC5NDnrFaoVqe4hqpApMAnBbW-VAk7ChE7BUpUxkowQUbSz9HSazN26KQw3bKF_e8MTxH-JqOiaekBa5DYI3FgdDu_NlVOyakaIZc2A2i3eK4ERIvFOGt1CTns-bG9HWA/qzQstW7ZRy74F9xWQJ3XZImdes6aWdx4ImmQ9z9XtIM", "spotify": "", "mood": ["warm", "nostalgic"], "genres": ["rock", "folk"], "time of day": ["afternoon", "evening"], "season": ["summer", "fall"], "location": ["outside"], "audience": ["mixed", "masculine", "feminine"], "social safety": ["high", "medium", "low"], "age range": ["my age", "older", "young"], "attention demand": ["medium"]}, {"name": "cooking", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/z26gpfZHHz9TNbo6KjRMEQ/3GrZV_EMcH3I4NWbIQNJdnHgDfCkWlbhF0l9f4Tspnsc5KnupL4b7JPnNuVuLiNNbQUeDUhKK7aaj5cAffGIHcaqSkRdFsWUzHQbh_HJkteJI0qGvAz7oH9CXJhG2TLELO7uqOwi2C-B8Z6UudYRoA/qxxMHa1jSun-W9t-wgr713p0BtvuISmgaGJ1G5A5ndw", "spotify": "", "mood": ["cozy", "relaxed"], "genres": ["pop", "indie"], "time of day": ["evening"], "season": ["spring", "summer", "fall"], "location": ["outside", "inside"], "audience": ["mixed"], "social safety": ["high", "medium", "low"], "age range": ["my age", "older"], "attention demand": ["low"]}, {"name": "yeehaw", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/_EQJEA3berO6k-dA38YyHg/TOl8EjMvaPy2--iAqB2HVjbfEa4BycgeI96CsDeS8irugIOrcsIUuVWjsGIOvi40h6qVO8KCuTocZHMuvk3D5IKN6t6jvGW0ZiOQGTvGcleMb51marGx-g3VsNiVPSoBNGMRQ831ZfmLvUBBLCXgFQ/BD1x9tq2f-5RXmQHKW4eTYr8v2CZu7W7eoiPk9xlriI", "spotify": "", "mood": ["free-spirited", "earthy"], "genres": ["indie", "rock", "pop", "folk"], "time of day": ["early", "noon", "afternoon", "evening"], "season": ["spring", "summer"], "location": ["outside"], "audience": ["mixed", "feminine"], "social safety": ["high", "medium", "low"], "age range": ["my age", "young"], "attention demand": ["medium"]}, {"name": "summer", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/5xW6guZWvrqqYJGeW-O7Gg/nxz8r97TqhtbP6lAlz_YuF-sBXUUfTOCOs9psyHx3Cuywui-Wc1qonEpazB9X2FOwxW1XwxRpLFToXzCIYqNlqqg6ZB2XABEyckGPi4RlPlVPeo0wwSJfP4TtK1dltiIGuEGgh699OW5BNmMvLTafA/NNeqowUkqnUZqVynkvMOfFvIjWx7VHEmh1OTp3_jVXM", "spotify": "", "mood": ["adventurous", "sunny"], "genres": ["rock", "electronic", "indie"], "time of day": ["noon", "afternoon", "evening"], "season": ["summer", "spring", "fall"], "location": ["outside"], "audience": ["mixed", "masculine"], "social safety": ["medium", "high"], "age range": ["my age", "young"], "attention demand": ["medium", "high"]}, {"name": "fresh", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/XYGxeFj8GMvHWWJGdkdJ8w/_AjnaJ107RfPKW98yhMVOdxF_5sjib6FeN2vfGOgQ4R4aq5jXkmJxqHJOhO3GyW8XEiNIl3x4awK0Qb30UGpPvRs7V7NM5ZLMckYMX7tW5N8UN_0dZB_m6HEEmNOPdF0VTKoG1rJAbk4ABtAEZdAxg/rWejwZaaAkAJxp9hdCtPr3-kl7jsNt34XZkfY9Se8QM", "spotify": "", "mood": ["fresh", "hopeful"], "genres": ["indie", "pop"], "time of day": ["early", "noon", "afternoon"], "season": ["summer", "spring"], "location": ["outside", "inside"], "audience": ["feminine"], "social safety": ["medium", "low"], "age range": ["my age", "young"], "attention demand": ["medium"]}, {"name": "landscapes", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/zFpSolzR9jlcu8N29FPitA/mT42Uyolfs5y4ZxDER5vT2ji7-VXXSg8O9y17FLfZm-xuXCgHdQxccZHaKVd8raPAs0QeQ8TvMmqp3bm9XabZPK-I0tIJyzZbtF3jlB-nlk5WJIMX9OGGrr5yiqzPDM-DaPteIL44_xjj2WIo2bdnw/oKilGFiGXRdHZtdKAzMuIWgBf3CoEhUA4RLPpVpt4po", "spotify": "", "mood": ["cinematic", "expansive"], "genres": ["rock", "indie"], "time of day": ["early", "noon", "afternoon", "evening"], "season": ["spring", "summer", "fall", "winter"], "location": ["outside"], "audience": ["mixed"], "social safety": ["medium", "low"], "age range": ["my age", "older", "young"], "attention demand": ["medium"]}, {"name": "storm", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/e4_D4X5GmOLKCMM12RcIYw/FWba_FgJsI_lVmFOXSLqSTFBM4o4O2m217iViBKiPi2h56a3s1r38OQ054C45VxlYyhWe6dze8nLbp8tR5xj9c48aitlLSABcDt4BSKfOC2Dx2x2M8s5r8miynQAU8imKLJm0CuYeMS5WaWtjxbwbQ/nt1oxMcBCkO1qAtB7Kz6m1EDmiJYFURM5gPwXuTWKqY", "spotify": "", "mood": ["dramatic", "cinematic"], "genres": ["rock", "folk"], "time of day": ["noon", "afternoon", "evening"], "season": ["spring", "summer", "fall"], "location": ["outside"], "audience": ["mixed"], "social safety": ["medium", "low"], "age range": ["my age", "older"], "attention demand": ["high", "medium"]}, {"name": "piano", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/k0SUlYoMa-HmevZkLMm0fA/lL5YKaVUBx0C46XWo4L3Vh7iHggufzcHGqM8kUeIyZUwuPngCdYmAUZHKLrc7jWyEJGl3tVxsR_s0Wt4jaeCWwWi52I8TWxLKe_f3dO6CZu8BFz9KfqlDSZXh-0Yz2TPhdUfFKevHL_wsGnJ91IhPg/wATPtv139-CLbojRSxICMMs0FuB6KglowdVC6evlSAQ", "spotify": "", "mood": ["peaceful", "contemplative"], "genres": ["classical"], "time of day": ["early", "noon", "afternoon", "evening", "night"], "season": ["spring", "summer", "fall", "winter"], "location": ["inside", "outside"], "audience": ["mixed", "feminine", "masculine"], "social safety": ["high", "medium", "low"], "age range": ["young", "my age", "older"], "attention demand": ["low"]}, {"name": "august", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/hV8A1EaxZZ3pKE3PRO8IEg/oUG_juIG1bP08OIpTCeSvtIoPqvsF2m0Nv_owGCYDpSrj7ekX1q4xC-_Yfu-0-uEyvbDoRUEvGEBTKa6oeoFB7YN7EGAtIkD6v3AeIbMNBijtNVVUERaMj_V1FAFsRFeldrqq7XafTqbUOKnzNppMg/StDRVDMjn9KBHr0YtNE3fNxTGANeDn1xuIQT0FOIFcE", "spotify": "", "mood": ["carefree", "wistful"], "genres": ["indie", "folk", "electronic"], "time of day": ["early", "noon", "afternoon", "evening"], "season": ["summer", "spring"], "location": ["outside"], "audience": ["feminine"], "social safety": ["high", "medium", "low"], "age range": ["my age", "young", "older"], "attention demand": ["medium"]}, {"name": "study", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/j7pLrKGx_u6GUmZ60QSWmw/H5SaFi5wLfEUEwzXdP68ti6VwJFzjEgAeiuogHzokCR7JifwQQk9y9T4Gg3EvasJH2_9R4pKX-eNqRs6CJDVqJF2WiU_qPlpfiCZtEuInDFB090It4H4tb6x2fDLd3aRSOongUCygZEu7W7MUmtAvg/hPRlK-3zsPo3-18SUhkBiZZyu8fMHZ9NeNEnCiFewNM", "spotify": "", "mood": ["focused", "contemplative"], "genres": ["classical"], "time of day": ["early", "noon", "afternoon", "evening", "night"], "season": ["spring", "summer", "fall", "winter"], "location": ["inside", "outside"], "audience": ["feminine", "mixed", "masculine"], "social safety": ["high", "medium", "low"], "age range": ["young", "my age", "older"], "attention demand": ["low"]}, {"name": "beach", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/ohPybV8mAcJCpuQ-1x11kg/kyBraCeoMNvUPEmNHSBqS1lM_iolWSbqah0tDWyY4g1OdWYyix9WDBgvmrpIfsj6M-WY5gi5_ZL0W4FKBkYjVQN1SOBXgFX4c3IDb80pSwJvgfx0AtnjoJgIofCs5kqVWVo5wPt39BGeX-NGU1gRJg/i_xVHNIOXz4KkVwJJaaRDswTcJzoq5IKLvtTJ359aqw", "spotify": "", "mood": ["tropical", "playful"], "genres": ["pop", "indie"], "time of day": ["noon", "afternoon", "evening", "early"], "season": ["spring", "summer"], "location": ["outside"], "audience": ["mixed"], "social safety": ["high", "medium", "low"], "age range": ["young", "my age", "older"], "attention demand": ["medium", "high"]}, {"name": "forest", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/z9ZDu608v8PCEUMXKDzvmg/VIesQdRjhR4wfEzrgRC6vZTo4P-8qU9vO38pLeJcPn5VJUdTB2w57qZcaScmsRViKQs-ofWnNs_Dx6fNRtIOHxaNPSFgryRTfGq5K49TQyRvKAP-vZb5kKKyXzPM3anNzH81dXu6U9XboDsvdRXP4g/x9M-t-kG1lFatCz4v_lN3eKsvlWGGUVqx7TSXS8fpUg", "spotify": "", "mood": ["earthy", "nostalgic"], "genres": ["rock", "indie", "folk"], "time of day": ["early", "noon", "afternoon", "evening", "night"], "season": ["fall", "spring", "summer"], "location": ["outside"], "audience": ["mixed", "masculine"], "social safety": ["high", "medium", "low"], "age range": ["my age", "young", "older"], "attention demand": ["medium", "high"]}, {"name": "wet", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/RJwlnjwbYsjLUDe9oZ32jA/0D89VyLx0FsaLWREkeevnHjsP8MMSgCrfFIbzfXf3VPgCR4fQ4E_ulOBCW2aj_XfWAVzObbiMAx5LG04cgPFNx9xJgq9lu7zSBI1LLbDzrIrJQHjJ1GV7bxX0Iuk5NkY30uY_GQarqqsoXMtGPlm_A/cy17AX2qrKmFH6cG1EfYYxLkgxOTQwJfhlkoAGAj5W0", "spotify": "", "mood": ["restless", "eclectic"], "genres": ["rock", "hip hop", "pop", "electronic", "indie"], "time of day": ["noon", "afternoon", "evening"], "season": ["spring", "summer"], "location": ["outside"], "audience": ["mixed", "masculine"], "social safety": ["medium", "low"], "age range": ["my age", "young"], "attention demand": ["medium"]}, {"name": "camping", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/F036zRhQ8lPGkw1JbQN4xQ/BUseLwUayS2tkm7U5WsVK69RWjtb016JGaHg9F48uTqgTvQNvxVgVgTzQhAB3WbBpWh--jobG7iDDjEx7S1PmrDiv2uIhO26DRO3ozaxG8qBLuidWV3DVj97QYBnO2Pnwwt9rL5DMrcg_PgyyISD4w/Jq_tXdw9KUl57lcv7jvtkdfPTDO6tcRQiT3-PdOOpoY", "spotify": "", "mood": ["rugged", "adventurous"], "genres": ["rock", "pop", "indie"], "time of day": ["evening", "night"], "season": ["summer", "fall"], "location": ["outside"], "audience": ["mixed"], "social safety": ["medium"], "age range": ["my age", "young"], "attention demand": ["medium", "high"]}, {"name": "boat", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/17vROvsqsgcTqZTaybS8SQ/JztVlDsX-WFz33MFnKXqY24u2mGiZPpul3-EGiwqF_ajONen2aHx3k3h3mO4omjJyYvVnTYs8sgA1B1lJfFnGBhsZ-7-xp_-RErP3mGsDQA9IoHOwWpq01FYTwXDAGdJygu7RmIIpvTX3St02l81KA/M7g-DKobsLsna9SOThpD7ikSRoRvrG46DCQ8bzH6-20", "spotify": "", "mood": ["stylish", "sunny"], "genres": ["pop", "electronic"], "time of day": ["noon", "afternoon", "evening"], "season": [], "location": ["outside"], "audience": ["mixed", "feminine"], "social safety": ["high", "medium", "low"], "age range": ["young", "my age", "older"], "attention demand": ["medium", "high"]}, {"name": "roof", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/6OlYfin_iZBGqfqh1J7lCg/w7GJALuXd3HpqnZL372DolAi45SATcAqmu0nGMcgLE6ijhKQUsFGpdmJd2g51TyxBUs_X1MYgkPnlfcUpmPEztSGhDGS1QFnSuEw4eDwu0WAVPIEqdZDJPO6vtbjwSfKr5YV8aIKgSBscAjwTwQIDg/D8olO77cvD166ZlS3sGL6itd8sacaAaGcCY1vggygBo", "spotify": "", "mood": ["social", "nostalgic"], "genres": ["electronic", "hip hop", "indie"], "time of day": ["noon", "afternoon", "evening"], "season": [], "location": ["outside", "inside"], "audience": ["mixed", "masculine"], "social safety": ["medium", "low"], "age range": ["young", "my age"], "attention demand": ["medium"]}, {"name": "blackout", "cover": "https://v5.airtableusercontent.com/v3/u/57/57/1788624000000/UuWHo5zbkiIRGKPTG203LQ/8kCUbC58CJxQL5exUqsbwDDx6e7M7vNH8F1f3OObXv6qKA-6PgwjBZEOnjEk5yUq3d_A514fmYlO7hTkYJ-DZvzpjHi6chM_hkXyrC9qAodLX4CeDfXddG8xLywoMOI1HyzlbJl6hWrzybRiw9pTHA/L2JHCmZ_NdYoI3DujdBgyVkruJcLm1lYr4p-cWrSnrQ", "spotify": "", "mood": ["wild", "hype"], "genres": ["hip hop", "electronic"], "time of day": ["night"], "season": [], "location": ["inside", "outside"], "audience": ["masculine", "mixed"], "social safety": ["low"], "age range": ["young", "my age"], "attention demand": ["high"]}, {"name": "", "cover": "", "spotify": "", "mood": [], "genres": [], "time of day": [], "season": [], "location": [], "audience": [], "social safety": [], "age range": [], "attention demand": []}];
+
+const ALL_MOODS = [...new Set(playlists.flatMap(p => p["mood"]))].sort();
+const ALL_GENRES = [...new Set(playlists.flatMap(p => p["genres"]))].sort();
+const settingFields = [
+  ["location","Location"],
+  ["attention demand","Attention demand"]
+];
+
+const groupFields = [
+  ["audience","Audience"],
+  ["social safety","Social safety"],
+  ["age range","Age range"]
+];
+
+const optionalFields = [...settingFields, ...groupFields];
+
+const selectedGenres = new Set();
+const selectedMoods = new Set();
+const optionalState = {};
+
+function titleCase(s) {
+  return s.replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function seasonNow(d=new Date()) {
+  const m = d.getMonth()+1;
+  if ([12,1,2].includes(m)) return "winter";
+  if ([3,4,5].includes(m)) return "spring";
+  if ([6,7,8].includes(m)) return "summer";
+  return "fall";
+}
+
+function timeNow(d=new Date()) {
+  const h = d.getHours();
+  if (h >= 5 && h < 11) return "early";
+  if (h >= 11 && h < 14) return "noon";
+  if (h >= 14 && h < 17) return "afternoon";
+  if (h >= 17 && h < 21) return "evening";
+  return "night";
+}
+
+function applyNow() {
+  document.getElementById("season").value = seasonNow();
+  document.getElementById("timeofday").value = timeNow();
+  update();
+}
+
+function passesBase(p) {
+  const season = document.getElementById("season").value;
+  const tod = document.getElementById("timeofday").value;
+  if (!p["season"].includes(season)) return false;
+  if (!p["time of day"].includes(tod)) return false;
+  for (const [field] of optionalFields) {
+    const v = optionalState[field];
+    if (v && !p[field].includes(v)) return false;
+  }
+  return true;
+}
+
+function passesGenres(p, extraGenre=null) {
+  const required = new Set(selectedGenres);
+  if (extraGenre) required.add(extraGenre);
+  for (const g of required) if (!p["genres"].includes(g)) return false;
+  return true;
+}
+
+function passesMoods(p) {
+  if (selectedMoods.size === 0) return true;
+  return [...selectedMoods].some(m => p["mood"].includes(m));
+}
+
+function resultRecords() {
+  return playlists.filter(p => passesBase(p) && passesGenres(p) && passesMoods(p));
+}
+
+function addFilterGroup(containerId, fields) {
+  const box = document.getElementById(containerId);
+  box.innerHTML = "";
+  for (const [field,label] of fields) {
+    const vals = [...new Set(playlists.flatMap(p => p[field]))].sort();
+    const wrap = document.createElement("div");
+    const lab = document.createElement("label");
+    lab.textContent = label;
+    const sel = document.createElement("select");
+    sel.innerHTML = `<option value="">Any</option>` + vals.map(v => `<option value="${v}">${titleCase(v)}</option>`).join("");
+    sel.addEventListener("change", () => { optionalState[field] = sel.value; update(); });
+    wrap.append(lab, sel);
+    box.appendChild(wrap);
+  }
+}
+
+function buildOptionalFilters() {
+  addFilterGroup("settingFilters", settingFields);
+  addFilterGroup("groupFilters", groupFields);
+}
+
+function renderGenres() {
+  const container = document.getElementById("genreChips");
+  container.innerHTML = "";
+  for (const g of ALL_GENRES) {
+    // Genre availability responds to current moods + all currently selected genres.
+    const count = playlists.filter(p =>
+      passesBase(p) &&
+      passesMoods(p) &&
+      passesGenres(p, selectedGenres.has(g) ? null : g)
+    ).length;
+    if (count === 0 && !selectedGenres.has(g)) continue;
+
+    const b = document.createElement("button");
+    b.className = "chip" + (selectedGenres.has(g) ? " selected" : "");
+    b.innerHTML = `${titleCase(g)} <span class="count">${count}</span>`;
+    b.onclick = () => {
+      selectedGenres.has(g) ? selectedGenres.delete(g) : selectedGenres.add(g);
+      update();
+    };
+    container.appendChild(b);
+  }
+}
+
+function renderMoods() {
+  const container = document.getElementById("moodChips");
+  container.innerHTML = "";
+
+  // With OR mood logic, available moods are derived from base + genre filters.
+  // Existing mood selections remain visible so they can always be deselected.
+  for (const m of ALL_MOODS) {
+    const count = playlists.filter(p =>
+      passesBase(p) && passesGenres(p) && p["mood"].includes(m)
+    ).length;
+    if (count === 0 && !selectedMoods.has(m)) continue;
+
+    const b = document.createElement("button");
+    b.className = "chip" + (selectedMoods.has(m) ? " selected" : "");
+    b.innerHTML = `${titleCase(m)} <span class="count">${count}</span>`;
+    b.onclick = () => {
+      selectedMoods.has(m) ? selectedMoods.delete(m) : selectedMoods.add(m);
+      update();
+    };
+    container.appendChild(b);
+  }
+}
+
+function renderResults() {
+  let rows = resultRecords();
+  const sort = document.getElementById("sort").value;
+
+  if (sort === "az") {
+    rows.sort((a,b) => a.name.localeCompare(b.name));
+  } else {
+    rows.sort((a,b) => {
+      const am = [...selectedMoods].filter(m => a["mood"].includes(m)).length;
+      const bm = [...selectedMoods].filter(m => b["mood"].includes(m)).length;
+      if (bm !== am) return bm - am;
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  document.getElementById("resultCount").textContent = rows.length;
+  const container = document.getElementById("results");
+  container.innerHTML = "";
+
+  if (!rows.length) {
+    container.innerHTML = `<div class="empty">No playlists match this combination. Remove a filter or genre.</div>`;
+    return;
+  }
+
+  for (const p of rows) {
+    const el = document.createElement(p.spotify ? "a" : "div");
+    el.className = "card";
+    if (p.spotify) {
+      el.href = p.spotify;
+      el.target = "_blank";
+      el.rel = "noopener";
+    }
+
+    const img = p.cover
+      ? `<img class="cover" src="${p.cover}" alt="" loading="lazy">`
+      : `<div class="no-cover">No cover</div>`;
+
+    const moodTags = p["mood"].map(m => `<span class="tag">${titleCase(m)}</span>`).join("");
+    const spotify = p.spotify
+      ? `<div class="spotify">Open in Spotify →</div>`
+      : `<div class="spotify missing">Spotify link not added yet</div>`;
+
+    el.innerHTML = `${img}<div class="card-body">
+      <div class="name">${p.name}</div>
+      <div class="tags">${moodTags}</div>
+      ${spotify}
+    </div>`;
+    container.appendChild(el);
+  }
+}
+
+function updateTimeSummary() {
+  const season = document.getElementById("season").value;
+  const tod = document.getElementById("timeofday").value;
+  document.getElementById("timeSummary").textContent =
+    `${titleCase(season)} · ${titleCase(tod)}`;
+}
+
+function update() {
+  updateTimeSummary();
+  renderMoods();
+  renderGenres();   // Re-render again because current moods affect genre availability.
+  renderResults();
+}
+
+document.getElementById("season").addEventListener("change", update);
+document.getElementById("timeofday").addEventListener("change", update);
+document.getElementById("sort").addEventListener("change", renderResults);
+document.getElementById("useNow").addEventListener("click", applyNow);
+
+buildOptionalFilters();
+applyNow();
+</script>
+</body>
+</html>

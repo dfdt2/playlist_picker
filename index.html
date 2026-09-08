@@ -535,13 +535,21 @@ function timeNow(d=new Date()) {
 }
 
 
-function weatherClassFromWMO(code) {
-  // Open-Meteo WMO weather interpretation codes.
-  if ([71,73,75,77,85,86].includes(code)) return "snow";
-  if ([51,53,55,56,57,61,63,65,66,67,80,81,82,95,96,99].includes(code)) return "rain";
-  if ([1,2,3,45,48].includes(code)) return "cloudy";
-  if (code === 0) return "sunny";
-  return "";
+function weatherClassFromCurrent(current) {
+  const code = current?.weather_code;
+  const cloud = Number(current?.cloud_cover ?? 0);
+  const rain = Number(current?.rain ?? 0);
+  const precip = Number(current?.precipitation ?? 0);
+  const snow = Number(current?.snowfall ?? 0);
+
+  // Precipitation takes priority over sky cover.
+  if (snow > 0 || [71,73,75,77,85,86].includes(code)) return "snow";
+  if (rain > 0 || precip > 0 || [51,53,55,56,57,61,63,65,66,67,80,81,82,95,96,99].includes(code)) return "rain";
+
+  // For this coarse playlist classification, "sunny" includes clear,
+  // mainly clear, and partly cloudy conditions when cloud cover is under 50%.
+  if (cloud < 50) return "sunny";
+  return "cloudy";
 }
 
 async function updateWeatherPreview(lat, lon) {
@@ -551,12 +559,12 @@ async function updateWeatherPreview(lat, lon) {
   try {
     const url =
       `https://api.open-meteo.com/v1/forecast?latitude=${encodeURIComponent(lat)}` +
-      `&longitude=${encodeURIComponent(lon)}&current=weather_code&timezone=auto`;
+      `&longitude=${encodeURIComponent(lon)}` +
+      `&current=weather_code,cloud_cover,precipitation,rain,snowfall&timezone=auto`;
     const response = await fetch(url);
     if (!response.ok) throw new Error("Weather request failed");
     const data = await response.json();
-    const code = data?.current?.weather_code;
-    const weather = weatherClassFromWMO(code);
+    const weather = weatherClassFromCurrent(data?.current);
 
     if (weather) {
       select.value = weather;

@@ -161,6 +161,25 @@ details.time-section[open] summary::after {
 
 .weather-filter { margin-bottom:10px; }
 
+.mood-explorer {
+  display:flex;
+  flex-direction:column;
+  gap:9px;
+  align-items:center;
+  margin-bottom:16px;
+}
+.mood-wheel {
+  width:min(220px, 58vw);
+  aspect-ratio:1;
+  display:block;
+  border-radius:50%;
+  cursor:crosshair;
+  touch-action:none;
+  box-shadow:0 0 0 1px rgba(39,48,32,.12), 0 7px 22px rgba(39,48,32,.10);
+}
+.mood-wheel:focus-visible { outline:3px solid #ef7fb3; outline-offset:4px; }
+.clear-wheel { padding:6px 10px; }
+
 
 
 h1 { color:#e82f86; }
@@ -255,7 +274,10 @@ select:focus, button:focus-visible { outline:2px solid #ef7fb3; outline-offset:2
 
   <section class="section">
     <h2>Moods</h2>
-    <div class="logic">Only moods available after the filters above are shown. Multiple moods use <b>OR</b>.</div>
+    <div class="mood-explorer">
+      <canvas class="mood-wheel" id="moodWheel" tabindex="0" role="application" aria-label="Mood wheel. High energy is left, low energy is right, bright is top, and dark is bottom."></canvas>
+      <button class="small clear-wheel" id="clearMoodWheel" type="button" disabled>Clear area</button>
+    </div>
     <div class="chips" id="moodChips"></div>
   </section>
 
@@ -278,6 +300,92 @@ const playlists = [{"name": "weird", "cover": "covers/001-weird.jpg", "spotify":
 for (const p of playlists) {
   if (!Array.isArray(p["sexual"])) p["sexual"] = [];
 }
+
+// Each descriptor is positioned independently. Energy runs from -1 (high)
+// to +1 (low), while mood runs from -1 (dark) to +1 (bright).
+const moodCoordinates = {
+  "aching":[0.55,-0.85],
+  "adventurous":[-0.60,0.55],
+  "atmospheric":[0.20,0.00],
+  "bittersweet":[0.25,-0.25],
+  "bright":[-0.25,0.90],
+  "carefree":[-0.30,0.85],
+  "cathartic":[-0.55,-0.10],
+  "chaotic":[-0.95,-0.45],
+  "chill":[0.65,0.35],
+  "cinematic":[-0.25,0.00],
+  "classy":[0.05,0.30],
+  "comforting":[0.65,0.70],
+  "confident":[-0.55,0.65],
+  "contemplative":[0.55,-0.10],
+  "cool":[-0.05,0.20],
+  "cozy":[0.75,0.75],
+  "defiant":[-0.70,-0.20],
+  "dramatic":[-0.65,-0.15],
+  "dreamy":[0.45,0.15],
+  "earthy":[0.20,0.15],
+  "eclectic":[-0.35,0.10],
+  "edgy":[-0.50,-0.25],
+  "emotional":[-0.20,-0.10],
+  "energetic":[-0.90,0.50],
+  "expansive":[-0.35,0.50],
+  "feminine":[0.00,0.20],
+  "festive":[-0.75,0.80],
+  "flirty":[-0.55,0.75],
+  "focused":[-0.15,0.10],
+  "free-spirited":[-0.60,0.75],
+  "fresh":[-0.35,0.75],
+  "fun":[-0.70,0.90],
+  "glamorous":[-0.40,0.55],
+  "gritty":[-0.60,-0.55],
+  "groovy":[-0.45,0.55],
+  "hopeful":[-0.15,0.80],
+  "hype":[-1.00,0.80],
+  "intense":[-0.90,-0.15],
+  "intimate":[0.55,0.25],
+  "introspective":[0.55,-0.25],
+  "joyful":[-0.50,1.00],
+  "lonely":[0.65,-0.90],
+  "loud":[-0.90,0.00],
+  "melancholic":[0.50,-0.70],
+  "mellow":[0.70,0.25],
+  "moody":[0.25,-0.55],
+  "nostalgic":[0.35,-0.15],
+  "peaceful":[0.90,0.50],
+  "pensive":[0.50,-0.25],
+  "playful":[-0.60,0.85],
+  "psychedelic":[-0.35,0.10],
+  "radiant":[-0.40,0.95],
+  "rebellious":[-0.70,-0.15],
+  "relaxed":[0.80,0.50],
+  "restless":[-0.75,-0.40],
+  "romantic":[0.05,0.60],
+  "rugged":[-0.50,-0.05],
+  "rustic":[0.25,0.15],
+  "sad":[0.65,-1.00],
+  "sleepy":[1.00,0.05],
+  "smooth":[0.40,0.35],
+  "social":[-0.45,0.60],
+  "soothing":[0.85,0.65],
+  "sophisticated":[0.15,0.25],
+  "soulful":[0.10,0.00],
+  "stylish":[-0.10,0.35],
+  "sultry":[0.10,-0.05],
+  "sunny":[-0.40,1.00],
+  "tropical":[-0.50,0.80],
+  "upbeat":[-0.80,0.90],
+  "uplifting":[-0.45,0.95],
+  "vibrant":[-0.70,0.80],
+  "vulnerable":[0.40,-0.45],
+  "warm":[0.35,0.65],
+  "weary":[0.85,-0.65],
+  "whimsical":[-0.20,0.70],
+  "wild":[-0.90,0.25],
+  "wistful":[0.45,-0.30]
+};
+
+const MOOD_RADIUS = 0.67;
+let wheelSelection = null;
 
 const ALL_MOODS = [...new Set(playlists.flatMap(p => p["mood"]))].sort();
 const ALL_GENRES = [...new Set(playlists.flatMap(p => p["genres"]))].sort();
@@ -309,6 +417,70 @@ function titleCase(s) {
 
 function displayValue(field, value) {
   return titleCase(value);
+}
+
+function interpolateHue(a, b, t) {
+  return a + (b - a) * t;
+}
+
+function mixRgb(a, b, t) {
+  return a.map((value, index) => Math.round(value + (b[index] - value) * t));
+}
+
+// Soft palette sampled from the reference: teal at right, lavender below,
+// coral at left, and warm yellow above.
+function wheelColorAt(energy, mood, soften=false) {
+  const angle = (Math.atan2(-mood, energy) * 180 / Math.PI + 360) % 360;
+  const anchors = [
+    [0,   [74, 181, 177]],
+    [90,  [177, 128, 193]],
+    [180, [239, 103, 101]],
+    [270, [239, 216, 102]],
+    [360, [74, 181, 177]]
+  ];
+  let color = anchors[0][1];
+  for (let i = 0; i < anchors.length - 1; i++) {
+    const [a0, c0] = anchors[i];
+    const [a1, c1] = anchors[i + 1];
+    if (angle >= a0 && angle <= a1) {
+      color = mixRgb(c0, c1, (angle - a0) / (a1 - a0));
+      break;
+    }
+  }
+  const distance = Math.min(1, Math.hypot(energy, mood));
+  const center = [249, 247, 239];
+  const strength = soften ? 0.22 + 0.38 * distance : 0.25 + 0.72 * distance;
+  return mixRgb(center, color, strength);
+}
+
+// Continuous color around the wheel:
+// bright/high-energy = yellow, bright/low-energy = green,
+// dark/low-energy = purple, dark/high-energy = red.
+function hueForMoodPosition(energy, mood) {
+  const angle = (Math.atan2(-mood, energy) * 180 / Math.PI + 360) % 360;
+  const anchors = [
+    [0, 197], [45, 270], [135, 350], [225, 405], [315, 485], [360, 557]
+  ];
+  for (let i = 0; i < anchors.length - 1; i++) {
+    const [a0, h0] = anchors[i];
+    const [a1, h1] = anchors[i + 1];
+    if (angle >= a0 && angle <= a1) {
+      return ((interpolateHue(h0, h1, (angle - a0) / (a1 - a0)) % 360) + 360) % 360;
+    }
+  }
+  return 197;
+}
+
+function moodTagColors(value) {
+  const point = moodCoordinates[String(value).toLowerCase()];
+  if (!point) return null;
+  const [energy, mood] = point;
+  const background = wheelColorAt(energy, mood, true);
+  const foreground = mixRgb(wheelColorAt(energy, mood), [34,38,31], 0.58);
+  return [
+    `rgb(${background.join(",")})`,
+    `rgb(${foreground.join(",")})`
+  ];
 }
 
 const tagColors = {
@@ -384,6 +556,8 @@ const tagColors = {
 
 function colorForTag(value) {
   const key = String(value).toLowerCase();
+  const moodColors = moodTagColors(key);
+  if (moodColors) return moodColors;
   if (tagColors[key]) return tagColors[key];
   let hash = 0;
   for (let i = 0; i < key.length; i++) hash = ((hash << 5) - hash) + key.charCodeAt(i);
@@ -422,6 +596,9 @@ const tagColorGroup = {
 };
 
 function colorRank(tag) {
+  const point = moodCoordinates[String(tag).toLowerCase()];
+  if (point) return hueForMoodPosition(point[0], point[1]) / 45;
+
   const group = tagColorGroup[String(tag).toLowerCase()];
   if (group) return colorGroups[group];
 
@@ -446,6 +623,145 @@ function sortByColorWheel(values) {
     if (rankDiff !== 0) return rankDiff;
     return a.localeCompare(b);
   });
+}
+
+function wheelMoods() {
+  if (!wheelSelection) return new Set();
+  const matches = new Set();
+  for (const mood of ALL_MOODS) {
+    const point = moodCoordinates[mood];
+    if (!point) continue;
+    const distance = Math.hypot(point[0] - wheelSelection.energy, point[1] - wheelSelection.mood);
+    if (distance <= MOOD_RADIUS) matches.add(mood);
+  }
+  return matches;
+}
+
+function expandedWheelMoods() {
+  if (!wheelSelection) return new Set(ALL_MOODS);
+  const nearby = wheelMoods();
+  const expanded = new Set(nearby);
+  for (const playlist of playlists) {
+    if (playlist["mood"].some(mood => nearby.has(mood))) {
+      for (const mood of playlist["mood"]) expanded.add(mood);
+    }
+  }
+  return expanded;
+}
+
+function effectiveMoodFilters() {
+  if (selectedMoods.size > 0) return selectedMoods;
+  if (wheelSelection) return expandedWheelMoods();
+  return null;
+}
+
+function drawMoodWheel() {
+  const canvas = document.getElementById("moodWheel");
+  if (!canvas) return;
+  const cssSize = Math.max(180, Math.round(canvas.getBoundingClientRect().width || 220));
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const size = Math.round(cssSize * dpr);
+  if (canvas.width !== size || canvas.height !== size) {
+    canvas.width = size;
+    canvas.height = size;
+  }
+
+  const ctx = canvas.getContext("2d");
+  const image = ctx.createImageData(size, size);
+  const radius = size / 2;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const energy = (x + 0.5 - radius) / radius;
+      const mood = -(y + 0.5 - radius) / radius;
+      const distance = Math.hypot(energy, mood);
+      const index = (y * size + x) * 4;
+      if (distance > 1) {
+        image.data[index + 3] = 0;
+        continue;
+      }
+      const [red, green, blue] = wheelColorAt(energy, mood);
+      image.data[index] = red;
+      image.data[index + 1] = green;
+      image.data[index + 2] = blue;
+      image.data[index + 3] = 255;
+    }
+  }
+  ctx.putImageData(image, 0, 0);
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(radius, radius, radius - 1, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.strokeStyle = "rgba(255,255,255,.34)";
+  ctx.lineWidth = Math.max(1, dpr);
+  ctx.beginPath();
+  ctx.moveTo(radius, 0);
+  ctx.lineTo(radius, size);
+  ctx.moveTo(0, radius);
+  ctx.lineTo(size, radius);
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.save();
+  ctx.fillStyle = "rgba(39,48,32,.60)";
+  ctx.font = `600 ${9 * dpr}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("BRIGHT", radius, 15 * dpr);
+  ctx.fillText("DARK", radius, size - 15 * dpr);
+  ctx.font = `600 ${8 * dpr}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+  ctx.fillText("HIGH", 29 * dpr, radius - 5 * dpr);
+  ctx.fillText("ENERGY", 29 * dpr, radius + 5 * dpr);
+  ctx.fillText("LOW", size - 29 * dpr, radius - 5 * dpr);
+  ctx.fillText("ENERGY", size - 29 * dpr, radius + 5 * dpr);
+  ctx.restore();
+
+  if (wheelSelection) {
+    const px = radius + wheelSelection.energy * radius;
+    const py = radius - wheelSelection.mood * radius;
+    ctx.beginPath();
+    ctx.arc(px, py, 8 * dpr, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255,255,255,.96)";
+    ctx.fill();
+    ctx.lineWidth = 3 * dpr;
+    ctx.strokeStyle = "rgba(39,48,32,.82)";
+    ctx.stroke();
+  }
+}
+
+function updateWheelStatus() {
+  const clear = document.getElementById("clearMoodWheel");
+  if (clear) clear.disabled = !wheelSelection;
+}
+
+function setWheelSelection(energy, mood) {
+  const length = Math.hypot(energy, mood);
+  if (length > 1) {
+    energy /= length;
+    mood /= length;
+  }
+  wheelSelection = {
+    energy: Math.max(-1, Math.min(1, energy)),
+    mood: Math.max(-1, Math.min(1, mood))
+  };
+  selectedMoods.clear();
+  drawMoodWheel();
+  update();
+}
+
+function chooseMoodWheelPoint(event) {
+  const canvas = document.getElementById("moodWheel");
+  const rect = canvas.getBoundingClientRect();
+  const radius = rect.width / 2;
+  const energy = (event.clientX - rect.left - radius) / radius;
+  const mood = -(event.clientY - rect.top - radius) / radius;
+  setWheelSelection(energy, mood);
+}
+
+function clearMoodWheel() {
+  wheelSelection = null;
+  drawMoodWheel();
+  update();
 }
 
 
@@ -684,8 +1000,9 @@ function passesGenres(p, extraGenre=null) {
 }
 
 function passesMoods(p) {
-  if (selectedMoods.size === 0) return true;
-  return [...selectedMoods].some(m => p["mood"].includes(m));
+  const active = effectiveMoodFilters();
+  if (!active) return true;
+  return p["mood"].some(m => active.has(m));
 }
 
 function resultRecords() {
@@ -757,10 +1074,12 @@ function renderGenres() {
 function renderMoods() {
   const container = document.getElementById("moodChips");
   container.innerHTML = "";
+  const visibleMoods = expandedWheelMoods();
 
-  // With OR mood logic, available moods are derived from base + genre filters.
-  // Existing mood selections remain visible so they can always be deselected.
+  // The wheel narrows the vocabulary and adds one-hop playlist pairings.
+  // Exact mood selections below continue to use OR logic.
   for (const m of sortByColorWheel(ALL_MOODS)) {
+    if (!visibleMoods.has(m) && !selectedMoods.has(m)) continue;
     const count = playlists.filter(p =>
       passesBase(p) && passesGenres(p) && p["mood"].includes(m)
     ).length;
@@ -781,13 +1100,14 @@ function renderMoods() {
 function renderResults() {
   let rows = resultRecords();
   const sort = document.getElementById("sort").value;
+  const activeMoods = effectiveMoodFilters() || new Set();
 
   if (sort === "az") {
     rows.sort((a,b) => a.name.localeCompare(b.name));
   } else {
     rows.sort((a,b) => {
-      const am = [...selectedMoods].filter(m => a["mood"].includes(m)).length;
-      const bm = [...selectedMoods].filter(m => b["mood"].includes(m)).length;
+      const am = a["mood"].filter(m => activeMoods.has(m)).length;
+      const bm = b["mood"].filter(m => activeMoods.has(m)).length;
       if (bm !== am) return bm - am;
       return a.name.localeCompare(b.name);
     });
@@ -867,6 +1187,7 @@ function updateTimeSummary() {
 
 function update() {
   updateTimeSummary();
+  updateWheelStatus();
   renderSeasons();
   renderMoods();
   renderGenres();   // Re-render again because current moods affect genre availability.
@@ -880,6 +1201,29 @@ document.getElementById("weatherNow").addEventListener("change", () => {
 });
 document.getElementById("sort").addEventListener("change", renderResults);
 document.getElementById("useNow").addEventListener("click", applyNow);
+document.getElementById("clearMoodWheel").addEventListener("click", clearMoodWheel);
+
+const moodWheel = document.getElementById("moodWheel");
+moodWheel.addEventListener("pointerdown", event => {
+  event.preventDefault();
+  chooseMoodWheelPoint(event);
+});
+moodWheel.addEventListener("keydown", event => {
+  if (event.key === "Escape") {
+    clearMoodWheel();
+    return;
+  }
+  if (!["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(event.key)) return;
+  event.preventDefault();
+  const point = wheelSelection || {energy:0, mood:0};
+  const step = event.shiftKey ? 0.25 : 0.10;
+  if (event.key === "ArrowLeft") point.energy -= step;
+  if (event.key === "ArrowRight") point.energy += step;
+  if (event.key === "ArrowUp") point.mood += step;
+  if (event.key === "ArrowDown") point.mood -= step;
+  setWheelSelection(point.energy, point.mood);
+});
+window.addEventListener("resize", drawMoodWheel);
 
 buildOptionalFilters();
 
@@ -888,6 +1232,7 @@ document.querySelectorAll("#peopleToggle .toggle-btn").forEach(btn => {
 });
 
 setWithPeople("no");
+requestAnimationFrame(drawMoodWheel);
 applyNow();
 </script>
 </body>

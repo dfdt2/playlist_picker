@@ -408,13 +408,21 @@ const socialFilterFields = [
 ];
 
 const socialPresets = {
-  mixed: {
+  work: {
     label: "Mixed company",
     values: {explicit:"clean", emotional:"light", cool:"cool", sexual:"non-sexual"}
+  },
+  casual: {
+    label: "Cool friends",
+    values: {explicit:"", emotional:"light", cool:"cool", sexual:"non-sexual"}
   },
   partner: {
     label: "Partner",
     values: {explicit:"", emotional:"", cool:"cool", sexual:""}
+  },
+  close: {
+    label: "Close friends",
+    values: {explicit:"", emotional:"", cool:"", sexual:"non-sexual"}
   }
 };
 
@@ -1211,8 +1219,8 @@ function setWithPeople(value) {
   wrap.className = withPeople ? "group-visible" : "group-hidden";
 
   if (withPeople) {
-    if (socialPresetSelect) socialPresetSelect.value = "mixed";
-    applySocialPreset("mixed");
+    if (socialPresetSelect) socialPresetSelect.value = "work";
+    applySocialPreset("work");
   } else {
     for (const [field] of [...groupFields, ...socialFilterFields]) {
       setOptionalFilter(field, "");
